@@ -1,0 +1,34 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "nvcc-debug",
+            "displayName": "CUDA + GCC Debug",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/nvcc-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_C_COMPILER": "/usr/bin/gcc",
+                "CMAKE_CXX_COMPILER": "/usr/bin/g++",
+                "CMAKE_CUDA_COMPILER": "/usr/local/cuda/bin/nvcc",
+                "CMAKE_C_FLAGS_DEBUG": "-DDEBUG",
+                "CMAKE_CXX_FLAGS_DEBUG": "-DDEBUG",
+                "CMAKE_CUDA_FLAGS_DEBUG": "-DDEBUG"
+            }
+        },
+        {
+            "name": "nvcc-release",
+            "displayName": "CUDA + GCC Release",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/nvcc-release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_C_COMPILER": "/usr/bin/gcc",
+                "CMAKE_CXX_COMPILER": "/usr/bin/g++",
+                "CMAKE_CUDA_COMPILER": "/usr/local/cuda/bin/nvcc"
+            }
+        }
+    ]
+}
