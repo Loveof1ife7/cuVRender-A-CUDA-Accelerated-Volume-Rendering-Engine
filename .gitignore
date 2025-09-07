@@ -11,3 +11,5 @@ obj/
 *.o
 *.exe
 
+datas/
+
