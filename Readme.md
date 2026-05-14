@@ -3,6 +3,32 @@ The architecture is designed with a clear separation between **data management**
 
 ---
 
+## Demo Results
+
+The current headless demo path can render the Miranda scientific volume from VTI data, Vol2Splat transfer functions, and camera trajectories.
+
+| Miranda TF1 / Frame 0 | Miranda TF1 / Frame 0, Shaded |
+| --- | --- |
+| ![Miranda TF1 Frame 0](results/miranda-tf1-frame0.png) | ![Miranda TF1 Frame 0 Shaded](results/miranda-tf1-frame0-shaded.png) |
+
+| Miranda TF1 / Frame 1 | Script Smoke Render |
+| --- | --- |
+| ![Miranda TF1 Frame 1](results/miranda-tf1-frame1-256.png) | ![Miranda Script Smoke Render](results/miranda-script-smoke.png) |
+
+Reproduce the Miranda demo render with:
+
+```bash
+scripts/render_miranda_demo.sh
+```
+
+You can switch transfer functions and frames without editing code:
+
+```bash
+TF_INDEX=3 FRAME=12 WIDTH=512 HEIGHT=512 scripts/render_miranda_demo.sh
+```
+
+---
+
 ## 1. Core Module
 Handles fundamental raymarching-based volume rendering pipeline.
 The **scene** module is responsible for storing and managing all data required for rendering:
@@ -244,4 +270,3 @@ Key choices here:
 * **Scalability** (streams, double-buffering, multi-field ready).
 
 If you want, I can turn this into a minimal but production-ready `Scene`/`commit()` implementation skeleton with the exact method names you prefer—and a tiny kernel showing how the snapshot is consumed.
-
