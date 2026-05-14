@@ -1,9 +1,10 @@
 #pragma once
-#include <cuda.h>
 #include <cuda_runtime.h>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <vector>
+#include <cmath>
 #include <Eigen/Dense>
 
 #define CUDA_CHECK(expr) cudaCheck((expr), #expr, __FILE__, __LINE__)

@@ -4,9 +4,12 @@
 #include <cstring>
 #include <limits>
 #include <memory>
+#include <string>
+#include <Eigen/Dense>
 #include "cuda_runtime.h"
 
 #include "volume.hpp"
+#include "transfer_function.hpp"
 
 // 解析命令行参数：
 // 例：
@@ -102,3 +105,31 @@ static bool readAllBytes(const std::string &p, std::vector<uint8_t> &out)
 
 // 实际构建 Volume：把 8/16 位标量转 float，并设置描述信息
 std::shared_ptr<Volume> loadRawVolume(const RawOptions &opt);
+
+struct VtiOptions
+{
+    std::string path;
+    float densityScale = 1.f;
+    bool normalize = false;
+    bool overrideWorldTransform = false;
+    float3 worldOrigin{0.f, 0.f, 0.f};
+    float worldSpacingScale = 1.f;
+};
+
+struct TransformCameraFrame
+{
+    bool valid = false;
+    int width = 0;
+    int height = 0;
+    float verticalFovDegrees = 45.f;
+    Eigen::Vector3f position{0.f, 0.f, 0.f};
+    Eigen::Vector3f forward{0.f, 0.f, -1.f};
+    Eigen::Vector3f up{0.f, 1.f, 0.f};
+    bool hasVolumeWorldTransform = false;
+    float3 volumeWorldOrigin{0.f, 0.f, 0.f};
+    float volumeWorldSpacingScale = 1.f;
+};
+
+std::shared_ptr<Volume> loadVtiVolume(const VtiOptions &opt);
+std::shared_ptr<TransferFunction> loadTransferFunctionConfig(const std::string &path, int samples = 512);
+TransformCameraFrame loadTransformCameraFrame(const std::string &path, int frameIndex);

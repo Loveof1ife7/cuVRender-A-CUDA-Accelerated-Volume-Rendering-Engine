@@ -73,16 +73,19 @@ void Scene::commit(cudaStream_t stream)
     {
         m_ds_host.d_camera = m_cam->toDevice();
         m_dirtyCam = false;
+        dsDirty = true;
     }
     if (m_dirtyVol)
     {
         m_ds_host.d_volume = m_volume->toDevice();
         m_dirtyVol = false;
+        dsDirty = true;
     }
     if (m_dirtyTF)
     {
         m_ds_host.d_tf = m_tf->toDevice();
         m_dirtyTF = false;
+        dsDirty = true;
     }
 
     if (m_dirtyLights)
@@ -90,6 +93,7 @@ void Scene::commit(cudaStream_t stream)
         m_ds_host.d_lights = m_lights ? m_lights->getDevicePointer() : nullptr;
         m_ds_host.lights_count = m_lights ? m_lights->count() : 0;
         m_dirtyLights = false;
+        dsDirty = true;
     }
 
     // Params
@@ -102,12 +106,14 @@ void Scene::commit(cudaStream_t stream)
         m_ds_host.clipMin = m_clipMin;
         m_ds_host.clipMax = m_clipMax;
         m_dirtyParams = false;
+        dsDirty = true;
     }
 
     if (!m_ds_dev)
     {
         CUDA_CHECK(
-            cudaMalloc(&m_ds_dev, sizeof(m_ds_host)));
+            cudaMalloc(reinterpret_cast<void **>(&m_ds_dev), sizeof(m_ds_host)));
+        dsDirty = true;
     }
     if (dsDirty)
     {

@@ -68,7 +68,7 @@ void VolumeRenderer::allocDeviceBuffer()
     if (!d_output_)
     {
         CUDA_CHECK(
-            cudaMalloc(&d_output_, size_t(width_) * size_t(height_) * sizeof(uchar4)));
+            cudaMalloc(reinterpret_cast<void **>(&d_output_), size_t(width_) * size_t(height_) * sizeof(uchar4)));
     }
 }
 
@@ -84,8 +84,8 @@ void VolumeRenderer::freeDeviceBuffer()
 VolumeRenderer::~VolumeRenderer()
 {
     freeDeviceBuffer();
-    destoryGLTexture();
     unregisterCudaInterop();
+    destoryGLTexture();
     if (stream_)
     {
         cudaStreamDestroy(stream_);
@@ -138,9 +138,9 @@ void VolumeRenderer::render(Scene &scene, bool commitScene)
     // 只有在 cudaGraphicsMapResources 之后，调用 cudaGraphicsSubResourceGetMappedArray 才能得到。
     // 用它才能直接访问像素数据（拷贝、创建 texture/surface 对象等）。
     // 如果没这个，CUDA kernel 就没办法读写 GL 纹理的存储。
-    cudaGraphicsMapResources(1, &cudaRes_, stream_);
+    CUDA_CHECK(cudaGraphicsMapResources(1, &cudaRes_, stream_));
     cudaArray_t dstArray = nullptr;
-    cudaGraphicsSubResourceGetMappedArray(&dstArray, cudaRes_, 0, 0);
+    CUDA_CHECK(cudaGraphicsSubResourceGetMappedArray(&dstArray, cudaRes_, 0, 0));
 
     // prepare kernal params, pass by value
     const DeviceScene &ds = scene.snapshotHost();
@@ -179,7 +179,7 @@ void VolumeRenderer::render(Scene &scene, bool commitScene)
 
     CUDA_CHECK(cudaStreamSynchronize(stream_));
     // The CUDA occupation of an OpenGL texture is relieved, allowing OpenGL to use the texture again
-    cudaGraphicsUnmapResources(1, &cudaRes_, stream_);
+    CUDA_CHECK(cudaGraphicsUnmapResources(1, &cudaRes_, stream_));
 }
 
 //! cuda-opengl interoperation

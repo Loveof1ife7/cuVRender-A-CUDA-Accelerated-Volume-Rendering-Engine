@@ -1,5 +1,6 @@
 #include "camera.hpp"
 #include "cuda_utils.hpp"
+#include <cmath>
 
 using MathUtils::Camera::f3;
 
@@ -33,6 +34,16 @@ void Camera::lookAt(const Eigen::Vector3f &target,
 void Camera::moveTo(const Eigen::Vector3f &pos)
 {
     position_ = pos;
+}
+
+void Camera::setFrame(const Eigen::Vector3f &position,
+                      const Eigen::Vector3f &forward,
+                      const Eigen::Vector3f &up)
+{
+    position_ = position;
+    forward_ = forward;
+    up_ = up;
+    orthonormalize();
 }
 
 Ray Camera::generateRay(float x, float y) const

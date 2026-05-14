@@ -114,7 +114,6 @@ int main(int argc, char **argv)
 
   VolumeRenderer::CreateInfo ci{WINDOW_WIDTH, WINDOW_HEIGHT, false};
   VolumeRenderer *renderer = new VolumeRenderer(ci);
-  GLuint dbgTex = makeChecker(WINDOW_WIDTH, WINDOW_HEIGHT);
 
   RawOptions opt;
   bool useRaw = parseRawArgs(argc, argv, opt);

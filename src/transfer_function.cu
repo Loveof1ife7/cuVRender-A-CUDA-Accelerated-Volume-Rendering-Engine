@@ -20,7 +20,7 @@ static cudaTextureObject_t make1DTex(cudaArray_t arr)
 TransferFunction::TransferFunction(const float4 *table, int count, float2 domain)
     : m_count(count), m_domain(domain)
 {
-    CUDA_CHECK(cudaMalloc(&m_device_table, count * sizeof(float4)));
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&m_device_table), count * sizeof(float4)));
     CUDA_CHECK(cudaMemcpy(m_device_table, table, count * sizeof(float4), cudaMemcpyHostToDevice));
 
     // description of the array storing float4  rgba

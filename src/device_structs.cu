@@ -1,4 +1,5 @@
 #include "device_structs.hpp"
+#include <math.h>
 
 __device__ void DeviceCamera::generateRay(int px, int py, int w, int h, float3 &ro, float3 &rd) const
 {

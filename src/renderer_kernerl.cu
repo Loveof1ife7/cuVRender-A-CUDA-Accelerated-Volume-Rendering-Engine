@@ -26,6 +26,14 @@ __device__ __forceinline__ unsigned char toByte(float x)
     return (unsigned char)(x * 255.f + 0.5f);
 }
 
+__device__ __forceinline__ float safeInvNonZero(float value)
+{
+    const float eps = 1e-6f;
+    if (fabsf(value) < eps)
+        return 1.0f / copysignf(eps, value == 0.0f ? 1.0f : value);
+    return 1.0f / value;
+}
+
 __device__ bool intersectAABB(
     const float3 &ro, const float3 &rd,
     const float3 &bmin, const float3 &bmax,
@@ -74,9 +82,9 @@ __device__ float3 worldToUVW(const DeviceVolume &vol, const float3 &pWorld)
 #endif
 
     float3 inv_voxel = make_float3(
-        1.0f / (vol.voxel_size.x + 1e-6f * signbit(vol.voxel_size.x)),
-        1.0f / (vol.voxel_size.y + 1e-6f * signbit(vol.voxel_size.y)),
-        1.0f / (vol.voxel_size.z + 1e-6f * signbit(vol.voxel_size.z)));
+        safeInvNonZero(vol.voxel_size.x),
+        safeInvNonZero(vol.voxel_size.y),
+        safeInvNonZero(vol.voxel_size.z));
 
     float3 idx = make_float3(
         (pWorld.x - vol.origin.x) * inv_voxel.x,
@@ -125,6 +133,46 @@ __device__ __forceinline__ float4 sampleTF(const DeviceTF &tf, float value)
     float4 c = tex1D<float4>(tf.tf1D, t);
     return c;
 }
+
+__device__ __forceinline__ float3 estimateGradient(const DeviceVolume &vol, const float3 uvw)
+{
+    const float hx = 1.0f / fmaxf(float(vol.dim.x - 1), 1.0f);
+    const float hy = 1.0f / fmaxf(float(vol.dim.y - 1), 1.0f);
+    const float hz = 1.0f / fmaxf(float(vol.dim.z - 1), 1.0f);
+
+    const float gx = sampleField(vol, f3(clampf(uvw.x + hx, 0.f, 1.f), uvw.y, uvw.z)) -
+                     sampleField(vol, f3(clampf(uvw.x - hx, 0.f, 1.f), uvw.y, uvw.z));
+    const float gy = sampleField(vol, f3(uvw.x, clampf(uvw.y + hy, 0.f, 1.f), uvw.z)) -
+                     sampleField(vol, f3(uvw.x, clampf(uvw.y - hy, 0.f, 1.f), uvw.z));
+    const float gz = sampleField(vol, f3(uvw.x, uvw.y, clampf(uvw.z + hz, 0.f, 1.f))) -
+                     sampleField(vol, f3(uvw.x, uvw.y, clampf(uvw.z - hz, 0.f, 1.f)));
+    return f3(gx, gy, gz);
+}
+
+__device__ __forceinline__ float3 shadeTFColor(const DeviceVolume &vol,
+                                               const float3 uvw,
+                                               const float3 rd,
+                                               const float3 rgb)
+{
+    const float3 grad = estimateGradient(vol, uvw);
+    const float gradLen = length3(grad);
+    if (gradLen < 1e-5f)
+        return rgb;
+
+    float3 n = mulS(grad, 1.0f / gradLen);
+    const float3 viewDir = normalize3(mulS(rd, -1.0f));
+    if (dot3(n, viewDir) < 0.0f)
+        n = mulS(n, -1.0f);
+
+    const float lambert = fmaxf(dot3(n, viewDir), 0.0f);
+    const float rim = powf(1.0f - lambert, 2.0f);
+    const float shade = 0.56f + 0.38f * lambert + 0.10f * rim;
+    return f3(
+        clampf(rgb.x * shade, 0.f, 1.f),
+        clampf(rgb.y * shade, 0.f, 1.f),
+        clampf(rgb.z * shade, 0.f, 1.f));
+}
+
 __device__ float sampleVolume(const float *volume, int3 dim, float3 pos)
 {
     float x = pos.x * (dim.x - 1);
@@ -240,7 +288,10 @@ __global__ void volumeRendererKernel(const DeviceScene scene,
             float4 c = sampleTF(scene.d_tf, s);
             float sigma = c.w * scene.d_volume.density_scale * scene.opacityScale;
             float a_i = 1.f - expf(-sigma * stepInVoxel);
-            compositeFrontToBack_unpremul(make_float3(c.x, c.y, c.z), a_i, accum);
+            float3 rgb = make_float3(c.x, c.y, c.z);
+            if (a_i > 1e-4f)
+                rgb = shadeTFColor(scene.d_volume, uvw, rd, rgb);
+            compositeFrontToBack_unpremul(rgb, a_i, accum);
 #ifdef DEBUG
             if (x == width / 2 && y == height / 2)
             {
@@ -253,12 +304,22 @@ __global__ void volumeRendererKernel(const DeviceScene scene,
                 break;
         }
         else if (scene.mode == 1)
-        { // -- mode 1: isosurface rendering
+        { // -- mode 1: basic isosurface rendering
+            if (s >= iso)
+            {
+                float4 c = sampleTF(scene.d_tf, s);
+                float3 rgb = shadeTFColor(scene.d_volume, uvw, rd, make_float3(c.x, c.y, c.z));
+                output[y * width + x] = make_uchar4(
+                    toByte(linearToSRGB(rgb.x)),
+                    toByte(linearToSRGB(rgb.y)),
+                    toByte(linearToSRGB(rgb.z)),
+                    255);
+                return;
+            }
         }
         else if (scene.mode == 2)
         { // -- mode 2: MIP
             maxVal = fmaxf(maxVal, s);
-
             continue;
         }
     }
@@ -291,6 +352,20 @@ __global__ void volumeRendererKernel(const DeviceScene scene,
             255);
         return;
     }
+
+    if (scene.mode == 2)
+    {
+        const float value = fmaxf(maxVal, 0.0f);
+        const float4 c = sampleTF(scene.d_tf, value);
+        output[y * width + x] = make_uchar4(
+            toByte(linearToSRGB(c.x)),
+            toByte(linearToSRGB(c.y)),
+            toByte(linearToSRGB(c.z)),
+            255);
+        return;
+    }
+
+    output[y * width + x] = make_uchar4(0, 0, 0, 255);
 }
 
 __global__ void kernelFirstSample(const DeviceScene scene,

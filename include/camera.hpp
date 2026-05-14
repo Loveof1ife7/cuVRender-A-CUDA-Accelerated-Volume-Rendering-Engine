@@ -17,6 +17,9 @@ public:
                 const Eigen::Vector3f &ref_up);
 
     void moveTo(const Eigen::Vector3f &pos);
+    void setFrame(const Eigen::Vector3f &position,
+                  const Eigen::Vector3f &forward,
+                  const Eigen::Vector3f &up);
 
     //* Generate ray through pixel (dx, dy)
     Ray generateRay(float dx, float dy) const;

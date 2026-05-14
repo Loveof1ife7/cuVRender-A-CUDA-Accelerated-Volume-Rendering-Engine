@@ -1,35 +1,5 @@
 #include "debug_utils.hpp"
 
-GLuint createGradientTexture(int w, int h)
-{
-    unsigned char *data = new unsigned char[w * h * 4];
-
-    for (int y = 0; y < h; ++y)
-    {
-        for (int x = 0; x < w; ++x)
-        {
-            int idx = (y * w + x) * 4;
-            data[idx + 0] = x * 255 / w; // R
-            data[idx + 1] = y * 255 / h; // G
-            data[idx + 2] = 128;         // B
-            data[idx + 3] = 255;         // A
-        }
-    }
-
-    GLuint texID;
-    glGenTextures(1, &texID);
-    glBindTexture(GL_TEXTURE_2D, texID);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h,
-                 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    delete[] data;
-    return texID;
-}
-
 std::shared_ptr<Volume> makeDummyVolume()
 {
     Volume::Description desc;
@@ -73,33 +43,6 @@ std::shared_ptr<TransferFunction> makeSimpleTF()
     }
     auto tf = std::make_shared<TransferFunction>(table.data(), (int)table.size(), make_float2(0, 1));
     return tf;
-}
-
-GLuint makeChecker(int w, int h)
-{
-    std::vector<unsigned char> img(w * h * 4);
-    for (int y = 0; y < h; ++y)
-        for (int x = 0; x < w; ++x)
-        {
-            bool c = ((x / 32) ^ (y / 32)) & 1;
-            int i = (y * w + x) * 4;
-            img[i + 0] = c ? 255 : 0;
-            img[i + 1] = c ? 255 : 0;
-            img[i + 2] = c ? 255 : 0;
-            img[i + 3] = 255;
-        }
-    GLuint tex = 0;
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.data());
-    glBindTexture(GL_TEXTURE_2D, 0);
-    return tex;
 }
 
 __global__ void volumeRenderCheckCUDAGL(DeviceScene ds, uchar4 *out, int w, int h)
