@@ -1,4 +1,4 @@
-# Cuda Volume Rendering System Architecture
+# cuVRender: A CUDA-Accelerated Volume Rendering Engine
 The architecture is designed with a clear separation between **data management** and **computational solving**, enabling modularity, scalability, and easier maintenance.
 
 ---
